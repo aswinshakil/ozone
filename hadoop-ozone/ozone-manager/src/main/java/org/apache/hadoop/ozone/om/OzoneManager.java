@@ -270,9 +270,6 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.LifeCycle;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.junit.internal.TextListener;
-import org.junit.runner.JUnitCore;
-import org.junit.runner.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -4099,10 +4096,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
   public OzoneManagerPrepareState getPrepareState() {
     try {
-      TestMultiTenantAccessController.setConfiguration(configuration);
-      JUnitCore junit = new JUnitCore();
-      junit.addListener(new TextListener(System.out));
-      junit.run(TestMultiTenantAccessController.class);
+      TestMultiTenantAccessController testMultiTenantAccessController =
+          new TestMultiTenantAccessController();
+      testMultiTenantAccessController.setConfiguration(configuration);
+      testMultiTenantAccessController.setupClusterTest();
+      testMultiTenantAccessController.runTests();
     } catch (Exception e) {
       LOG.error("Ranger client tests failed with exception: ", e);
     }

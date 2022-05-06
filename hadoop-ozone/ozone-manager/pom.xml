@@ -119,8 +119,7 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <!-- Temporary to run tests in real cluster -->
-<!--      <scope>test</scope>-->
+      <scope>test</scope>
     </dependency>
 
     <dependency>

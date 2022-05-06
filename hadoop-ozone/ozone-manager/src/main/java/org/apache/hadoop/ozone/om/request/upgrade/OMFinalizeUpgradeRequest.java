@@ -36,6 +36,7 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Finaliz
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.FinalizeUpgradeResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.LayoutVersion;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,17 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
 
   public OMFinalizeUpgradeRequest(OMRequest omRequest) {
     super(omRequest);
+  }
+
+  @Override
+  public OMRequest preExecute(OzoneManager ozoneManager) throws IOException {
+    ozoneManager.getPrepareState();
+    LayoutVersion layoutVersion = LayoutVersion.newBuilder()
+        .setVersion(ozoneManager.getVersionManager().getMetadataLayoutVersion())
+        .build();
+    return getOmRequest().toBuilder()
+        .setUserInfo(getUserIfNotExists(ozoneManager))
+        .setLayoutVersion(layoutVersion).build();
   }
 
   @Override
