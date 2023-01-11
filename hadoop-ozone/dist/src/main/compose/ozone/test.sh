@@ -39,6 +39,8 @@ execute_robot_test scm gdpr
 
 execute_robot_test scm security/ozone-secure-token.robot
 
+execute_robot_test scm snapshot/basic.robot
+
 exclude=""
 for bucket in erasure link generated; do
   execute_robot_test scm -v BUCKET:${bucket} -N s3-${bucket} ${exclude} s3
@@ -51,8 +53,6 @@ execute_robot_test scm recon
 execute_robot_test scm om-ratis
 
 execute_robot_test scm freon
-
-execute_robot_test scm snapshot/basic.robot
 
 execute_robot_test scm cli
 execute_robot_test scm admincli
