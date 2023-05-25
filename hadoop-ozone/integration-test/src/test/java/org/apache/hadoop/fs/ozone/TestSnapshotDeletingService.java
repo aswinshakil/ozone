@@ -44,6 +44,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.RepeatedTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +112,7 @@ public class TestSnapshotDeletingService {
     }
   }
 
-  @Test
+  @RepeatedTest(20)
   public void testSnapshotSplitAndMove() throws Exception {
     SnapshotDeletingService snapshotDeletingService = (SnapshotDeletingService)
         om.getKeyManager().getSnapshotDeletingService();
@@ -136,7 +137,7 @@ public class TestSnapshotDeletingService {
     Assertions.assertEquals(1, omKeyInfos.size());
   }
 
-  @Test
+  @RepeatedTest(20)
   public void testMultipleSnapshotKeyReclaim() throws Exception {
 
     Table<String, RepeatedOmKeyInfo> deletedTable =
@@ -181,7 +182,7 @@ public class TestSnapshotDeletingService {
   }
 
   @SuppressWarnings("checkstyle:MethodLength")
-  @Test
+  @RepeatedTest(20)
   public void testSnapshotWithFSO() throws Exception {
     Table<String, OmDirectoryInfo> dirTable =
         om.getMetadataManager().getDirectoryTable();
