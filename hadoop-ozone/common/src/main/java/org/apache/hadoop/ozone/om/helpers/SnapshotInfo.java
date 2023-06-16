@@ -124,6 +124,7 @@ public final class SnapshotInfo implements Auditable {
    * RocksDB transaction sequence number at the time of checkpoint creation.
    */
   private long dbTxSequenceNumber;
+  private boolean deepClean;
 
   /**
    * Private constructor, constructed via builder.
@@ -152,7 +153,8 @@ public final class SnapshotInfo implements Auditable {
                        String globalPreviousSnapshotID,
                        String snapshotPath,
                        String checkpointDir,
-                       long dbTxSequenceNumber) {
+                       long dbTxSequenceNumber,
+                       boolean deepClean) {
     this.snapshotID = snapshotID;
     this.name = name;
     this.volumeName = volumeName;
@@ -165,6 +167,7 @@ public final class SnapshotInfo implements Auditable {
     this.snapshotPath = snapshotPath;
     this.checkpointDir = checkpointDir;
     this.dbTxSequenceNumber = dbTxSequenceNumber;
+    this.deepClean = deepClean;
   }
 
   public void setName(String name) {
@@ -201,6 +204,14 @@ public final class SnapshotInfo implements Auditable {
 
   public void setCheckpointDir(String checkpointDir) {
     this.checkpointDir = checkpointDir;
+  }
+
+  public boolean getDeepClean() {
+    return deepClean;
+  }
+
+  public void setDeepClean(boolean deepClean) {
+    this.deepClean = deepClean;
   }
 
   public String getSnapshotID() {
@@ -264,7 +275,8 @@ public final class SnapshotInfo implements Auditable {
         .setPathPreviousSnapshotID(pathPreviousSnapshotID)
         .setGlobalPreviousSnapshotID(globalPreviousSnapshotID)
         .setSnapshotPath(snapshotPath)
-        .setCheckpointDir(checkpointDir);
+        .setCheckpointDir(checkpointDir)
+        .setDeepClean(deepClean);
   }
 
   /**
@@ -283,6 +295,7 @@ public final class SnapshotInfo implements Auditable {
     private String snapshotPath;
     private String checkpointDir;
     private long dbTxSequenceNumber;
+    private boolean deepClean;
 
     public Builder() {
       // default values
@@ -350,6 +363,11 @@ public final class SnapshotInfo implements Auditable {
       return this;
     }
 
+    public Builder setDeepClean(boolean deepClean) {
+      this.deepClean = deepClean;
+      return this;
+    }
+
     public SnapshotInfo build() {
       Preconditions.checkNotNull(name);
       return new SnapshotInfo(
@@ -364,7 +382,8 @@ public final class SnapshotInfo implements Auditable {
           globalPreviousSnapshotID,
           snapshotPath,
           checkpointDir,
-          dbTxSequenceNumber
+          dbTxSequenceNumber,
+          deepClean
       );
     }
   }
@@ -393,7 +412,8 @@ public final class SnapshotInfo implements Auditable {
 
     sib.setSnapshotPath(snapshotPath)
         .setCheckpointDir(checkpointDir)
-        .setDbTxSequenceNumber(dbTxSequenceNumber);
+        .setDbTxSequenceNumber(dbTxSequenceNumber)
+        .setDeepClean(deepClean);
     return sib.build();
   }
 
@@ -422,6 +442,10 @@ public final class SnapshotInfo implements Auditable {
     if (snapshotInfoProto.hasGlobalPreviousSnapshotID()) {
       osib.setGlobalPreviousSnapshotID(snapshotInfoProto.
           getGlobalPreviousSnapshotID());
+    }
+
+    if (snapshotInfoProto.hasDeepClean()) {
+      osib.setDeepClean(snapshotInfoProto.getDeepClean());
     }
 
     osib.setSnapshotPath(snapshotInfoProto.getSnapshotPath())
@@ -507,7 +531,8 @@ public final class SnapshotInfo implements Auditable {
         .setSnapshotPath(volumeName + OM_KEY_PREFIX + bucketName)
         .setVolumeName(volumeName)
         .setBucketName(bucketName)
-        .setCheckpointDir(getCheckpointDirName(snapshotId));
+        .setCheckpointDir(getCheckpointDirName(snapshotId))
+        .setDeepClean(true);
     return builder.build();
   }
 
