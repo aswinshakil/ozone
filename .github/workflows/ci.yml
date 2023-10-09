@@ -26,11 +26,11 @@ jobs:
       GITHUB_CONTEXT: ${{ toJson(github) }}
     outputs:
       acceptance-suites: 'false'
-      needs-basic-check: 'false'
+      needs-basic-check: 'true'
       needs-unit-check: 'false'
-      basic-checks: 'false'
+      basic-checks: 'true'
       unit-checks: 'false'
-      needs-build: 'false'
+      needs-build: 'true'
       needs-compile: 'false'
       needs-compose-tests: 'false'
       needs-dependency-check: 'false'
@@ -382,6 +382,8 @@ jobs:
   integration:
     needs:
       - build-info
+      - build
+      - basic
     runs-on: ubuntu-20.04
     timeout-minutes: 150
     if: needs.build-info.outputs.needs-integration-tests == 'true'
