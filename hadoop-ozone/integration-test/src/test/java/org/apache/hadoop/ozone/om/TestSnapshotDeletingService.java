@@ -44,6 +44,7 @@ import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +52,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.apache.hadoop.hdds.HddsUtils.formatStackTrace;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_KEY;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ACL_ENABLED;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_INTERVAL;
@@ -146,7 +150,7 @@ public class TestSnapshotDeletingService {
     assertEquals(1, omKeyInfos.size());
   }
 
-  @Test
+  @RepeatedTest(50)
   @Flaky("HDDS-9288")
   public void testMultipleSnapshotKeyReclaim() throws Exception {
 
@@ -193,7 +197,15 @@ public class TestSnapshotDeletingService {
     // verify the cache of purged snapshot
     // /vol1/bucket2/bucket2snap1 has been cleaned up from cache map
     SnapshotCache snapshotCache = om.getOmSnapshotManager().getSnapshotCache();
-    Thread.sleep(2000);
+    System.out.println("Stack Trace Print");
+
+    for (Thread thread: Thread.getAllStackTraces().keySet()) {
+      if (thread.getName().contains("Service")) {
+        System.out.println("THREAD: " + thread.getName());
+        System.out.println("Thread State: " + thread.getState());
+        System.out.println(formatStackTrace(thread.getStackTrace(), 0));
+      }
+    }
     assertEquals(2, snapshotCache.size());
     assertEquals(2, snapshotCache.getPendingEvictionListSize());
   }

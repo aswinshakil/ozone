@@ -1990,6 +1990,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
         <configuration>
           <reuseForks>false</reuseForks>
           <forkedProcessTimeoutInSeconds>${surefire.fork.timeout}</forkedProcessTimeoutInSeconds>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
           <!-- @argLine is filled by jacoco maven plugin. @{} means late evaluation -->
           <argLine>${maven-surefire-plugin.argLine} @{argLine}</argLine>
           <environmentVariables>
