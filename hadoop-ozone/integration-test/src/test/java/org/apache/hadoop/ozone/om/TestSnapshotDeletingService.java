@@ -44,7 +44,6 @@ import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -150,7 +147,7 @@ public class TestSnapshotDeletingService {
     assertEquals(1, omKeyInfos.size());
   }
 
-  @RepeatedTest(50)
+  @Test
   @Flaky("HDDS-9288")
   public void testMultipleSnapshotKeyReclaim() throws Exception {
 

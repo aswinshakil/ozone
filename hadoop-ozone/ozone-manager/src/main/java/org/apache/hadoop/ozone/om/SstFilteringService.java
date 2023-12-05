@@ -80,7 +80,8 @@ public class SstFilteringService extends BackgroundService
   private AtomicBoolean running;
 
   public SstFilteringService(long interval, TimeUnit unit, long serviceTimeout,
-      OzoneManager ozoneManager, OzoneConfiguration configuration) {
+                             OzoneManager ozoneManager,
+                             OzoneConfiguration configuration) {
     super("SstFilteringService", interval, unit, SST_FILTERING_CORE_POOL_SIZE,
         serviceTimeout, ozoneManager.getThreadNamePrefix());
     this.ozoneManager = ozoneManager;
@@ -116,32 +117,24 @@ public class SstFilteringService extends BackgroundService
 
     /**
      * Marks the SSTFiltered flag corresponding to the snapshot.
-     * @param volume Volume name of the snapshot
-     * @param bucket Bucket name of the snapshot
+     *
+     * @param volume       Volume name of the snapshot
+     * @param bucket       Bucket name of the snapshot
      * @param snapshotName Snapshot name
      * @throws IOException
      */
     private void markSSTFilteredFlagForSnapshot(String volume, String bucket,
-        String snapshotName) throws IOException {
-      OMLockDetails omLockDetails = ozoneManager.getMetadataManager().getLock()
-              .acquireWriteLock(SNAPSHOT_LOCK, volume, bucket, snapshotName);
-      boolean acquiredSnapshotLock = omLockDetails.isLockAcquired();
-      if (acquiredSnapshotLock) {
-        Table<String, SnapshotInfo> snapshotInfoTable =
-            ozoneManager.getMetadataManager().getSnapshotInfoTable();
-        try {
-          // mark the snapshot as filtered by writing to the file
-          String snapshotTableKey = SnapshotInfo.getTableKey(volume, bucket,
-              snapshotName);
-          SnapshotInfo snapshotInfo = snapshotInfoTable.get(snapshotTableKey);
+                                                String snapshotName)
+        throws IOException {
+      Table<String, SnapshotInfo> snapshotInfoTable =
+          ozoneManager.getMetadataManager().getSnapshotInfoTable();
+      // mark the snapshot as filtered by writing to the file
+      String snapshotTableKey = SnapshotInfo.getTableKey(volume, bucket,
+          snapshotName);
+      SnapshotInfo snapshotInfo = snapshotInfoTable.get(snapshotTableKey);
 
-          snapshotInfo.setSstFiltered(true);
-          snapshotInfoTable.put(snapshotTableKey, snapshotInfo);
-        } finally {
-          ozoneManager.getMetadataManager().getLock()
-              .releaseWriteLock(SNAPSHOT_LOCK, volume, bucket, snapshotName);
-        }
-      }
+      snapshotInfo.setSstFiltered(true);
+      snapshotInfoTable.put(snapshotTableKey, snapshotInfo);
     }
 
     @Override
@@ -165,10 +158,12 @@ public class SstFilteringService extends BackgroundService
         long snapshotLimit = snapshotLimitPerTask;
 
         while (iterator.hasNext() && snapshotLimit > 0 && running.get()) {
+          boolean acquiredSnapshotLock = false;
+          SnapshotInfo snapshotInfo = null;
           try {
             Table.KeyValue<String, SnapshotInfo> keyValue = iterator.next();
             String snapShotTableKey = keyValue.getKey();
-            SnapshotInfo snapshotInfo = keyValue.getValue();
+            snapshotInfo = keyValue.getValue();
 
             if (snapshotInfo.isSstFiltered()) {
               continue;
@@ -182,6 +177,12 @@ public class SstFilteringService extends BackgroundService
                     snapshotInfo.getVolumeName(),
                     snapshotInfo.getBucketName());
 
+            OMLockDetails omLockDetails = ozoneManager.getMetadataManager()
+                .getLock().acquireWriteLock(SNAPSHOT_LOCK,
+                    snapshotInfo.getVolumeName(),
+                    snapshotInfo.getVolumeName(),
+                    snapshotInfo.getName());
+            acquiredSnapshotLock = omLockDetails.isLockAcquired();
             try (
                 ReferenceCounted<IOmMetadataReader, SnapshotCache>
                     snapshotMetadataReader = snapshotCache.get().get(
@@ -216,6 +217,14 @@ public class SstFilteringService extends BackgroundService
             snapshotFilteredCount.getAndIncrement();
           } catch (RocksDBException | IOException e) {
             LOG.error("Exception encountered while filtering a snapshot", e);
+          } finally {
+            if (acquiredSnapshotLock && snapshotInfo != null) {
+              ozoneManager.getMetadataManager()
+                  .getLock().releaseWriteLock(SNAPSHOT_LOCK,
+                      snapshotInfo.getVolumeName(),
+                      snapshotInfo.getVolumeName(),
+                      snapshotInfo.getName());
+            }
           }
         }
       } catch (IOException e) {

@@ -841,6 +841,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       String fsKey = getTableKey(volumeName, bucketName, fromSnapshotName);
       String tsKey = getTableKey(volumeName, bucketName, toSnapshotName);
 
+      // TODO: Add SNAPSHOT_LOCK for Active Snapshots.
       rcFromSnapshot = snapshotCache.get(fsKey);
       rcToSnapshot = snapshotCache.get(tsKey);
 

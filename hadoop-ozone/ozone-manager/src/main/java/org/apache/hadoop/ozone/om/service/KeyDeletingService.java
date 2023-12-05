@@ -44,6 +44,7 @@ import org.apache.hadoop.ozone.om.OmSnapshot;
 import org.apache.hadoop.ozone.om.OmSnapshotManager;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.helpers.OMRatisHelper;
+import org.apache.hadoop.ozone.om.lock.OMLockDetails;
 import org.apache.hadoop.ozone.om.ratis.OzoneManagerRatisServer;
 import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
 import org.apache.hadoop.ozone.om.snapshot.SnapshotCache;
@@ -63,6 +64,7 @@ import static org.apache.hadoop.ozone.om.OmSnapshotManager.getSnapshotPrefix;
 import static org.apache.hadoop.ozone.om.helpers.SnapshotInfo.SnapshotStatus.SNAPSHOT_ACTIVE;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_KEY_DELETING_LIMIT_PER_TASK;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_KEY_DELETING_LIMIT_PER_TASK_DEFAULT;
+import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.SNAPSHOT_LOCK;
 
 import org.apache.hadoop.ozone.om.PendingKeysDeletion;
 import org.apache.hadoop.ozone.om.SnapshotChainManager;
@@ -263,6 +265,17 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
             continue;
           }
 
+          OMLockDetails prevSnapshotLock = null;
+          OMLockDetails prevToPrevSnapshotLock = null;
+          boolean acqPrevSnapshotLock = false;
+          boolean acqPrevToPrevSnapshotLock = false;
+          SnapshotInfo previousToPrevSnapshot = null;
+          SnapshotInfo previousSnapshot = null;
+          OMLockDetails currSnapshotLock = getOzoneManager()
+              .getMetadataManager().getLock().acquireWriteLock(SNAPSHOT_LOCK,
+                  currSnapInfo.getVolumeName(), currSnapInfo.getBucketName(),
+                  currSnapInfo.getName());
+          boolean acqCurrSnapshotLock = currSnapshotLock.isLockAcquired();
           try (ReferenceCounted<IOmMetadataReader, SnapshotCache>
               rcCurrOmSnapshot = omSnapshotManager.checkForSnapshot(
                   currSnapInfo.getVolumeName(),
@@ -292,9 +305,8 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
             }
 
             String snapshotBucketKey = dbBucketKey + OzoneConsts.OM_KEY_PREFIX;
-            SnapshotInfo previousSnapshot = getPreviousActiveSnapshot(
+            previousSnapshot = getPreviousActiveSnapshot(
                 currSnapInfo, snapChainManager, omSnapshotManager);
-            SnapshotInfo previousToPrevSnapshot = null;
 
             if (previousSnapshot != null) {
               previousToPrevSnapshot = getPreviousActiveSnapshot(
@@ -309,6 +321,12 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
             // Split RepeatedOmKeyInfo and update current snapshot
             // deletedKeyTable and next snapshot deletedKeyTable.
             if (previousSnapshot != null) {
+              prevSnapshotLock = getOzoneManager().getMetadataManager()
+                  .getLock().acquireWriteLock(SNAPSHOT_LOCK,
+                      previousSnapshot.getVolumeName(),
+                      previousSnapshot.getBucketName(),
+                      previousSnapshot.getName());
+              acqPrevSnapshotLock = prevSnapshotLock.isLockAcquired();
               rcPrevOmSnapshot = omSnapshotManager.checkForSnapshot(
                   previousSnapshot.getVolumeName(),
                   previousSnapshot.getBucketName(),
@@ -326,6 +344,13 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
             ReferenceCounted<IOmMetadataReader, SnapshotCache>
                 rcPrevToPrevOmSnapshot = null;
             if (previousToPrevSnapshot != null) {
+              prevToPrevSnapshotLock = getOzoneManager().getMetadataManager()
+                  .getLock().acquireWriteLock(SNAPSHOT_LOCK,
+                      previousToPrevSnapshot.getVolumeName(),
+                      previousToPrevSnapshot.getBucketName(),
+                      previousToPrevSnapshot.getName());
+              acqPrevToPrevSnapshotLock = prevToPrevSnapshotLock
+                  .isLockAcquired();
               rcPrevToPrevOmSnapshot = omSnapshotManager.checkForSnapshot(
                   previousToPrevSnapshot.getVolumeName(),
                   previousToPrevSnapshot.getBucketName(),
@@ -414,7 +439,32 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
               }
             } finally {
               IOUtils.closeQuietly(rcPrevOmSnapshot, rcPrevToPrevOmSnapshot);
+              // Release Acquired Lock
             }
+          } finally {
+            // Release Acquired Lock
+            if (acqCurrSnapshotLock) {
+              getOzoneManager().getMetadataManager().getLock()
+                  .releaseWriteLock(SNAPSHOT_LOCK,
+                      currSnapInfo.getVolumeName(),
+                      currSnapInfo.getBucketName(),
+                      currSnapInfo.getName());
+            }
+            if (acqPrevSnapshotLock && previousSnapshot != null) {
+              getOzoneManager().getMetadataManager().getLock()
+                  .releaseWriteLock(SNAPSHOT_LOCK,
+                      previousSnapshot.getVolumeName(),
+                      previousSnapshot.getBucketName(),
+                      previousSnapshot.getName());
+            }
+            if (acqPrevToPrevSnapshotLock && previousToPrevSnapshot != null) {
+              getOzoneManager().getMetadataManager().getLock()
+                  .releaseWriteLock(SNAPSHOT_LOCK,
+                      previousToPrevSnapshot.getVolumeName(),
+                      previousToPrevSnapshot.getBucketName(),
+                      previousToPrevSnapshot.getName());
+            }
+
           }
 
         }
