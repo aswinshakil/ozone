@@ -203,7 +203,19 @@ public class TestSnapshotDeletingService {
         System.out.println(formatStackTrace(thread.getStackTrace(), 0));
       }
     }
+
+    System.out.println("SnapshotCache Entries");
+    for (String key: snapshotCache.getDbMap().keySet()) {
+      System.out.println("Snapshot Key in DB Map: " + key);
+    }
     assertEquals(2, snapshotCache.size());
+    System.out.println("SnapshotCache Eviction List");
+    snapshotCache.getPendingEvictionList().forEach(k -> {
+      OmSnapshot omSnapshot = (OmSnapshot) k.get();
+      System.out.println("Snapshot Key in PendingEvictionList " +
+          omSnapshot.getSnapshotTableKey());
+    });
+
     assertEquals(2, snapshotCache.getPendingEvictionListSize());
   }
 
