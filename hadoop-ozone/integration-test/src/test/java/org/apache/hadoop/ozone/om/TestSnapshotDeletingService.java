@@ -197,7 +197,7 @@ public class TestSnapshotDeletingService {
     System.out.println("Stack Trace Print");
 
     for (Thread thread: Thread.getAllStackTraces().keySet()) {
-      if (thread.getName().contains("Service")) {
+      if (thread.getState().equals(Thread.State.BLOCKED)) {
         System.out.println("THREAD: " + thread.getName());
         System.out.println("Thread State: " + thread.getState());
         System.out.println(formatStackTrace(thread.getStackTrace(), 0));
