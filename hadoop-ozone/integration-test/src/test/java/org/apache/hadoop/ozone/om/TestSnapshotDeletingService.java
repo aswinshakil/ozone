@@ -95,9 +95,9 @@ public class TestSnapshotDeletingService {
         500, TimeUnit.MILLISECONDS);
     conf.setTimeDuration(OZONE_SNAPSHOT_DELETING_SERVICE_TIMEOUT,
         10000, TimeUnit.MILLISECONDS);
-    conf.setInt(OMConfigKeys.OZONE_DIR_DELETING_SERVICE_INTERVAL, 500);
+    conf.setInt(OMConfigKeys.OZONE_DIR_DELETING_SERVICE_INTERVAL, 1000);
     conf.setInt(OMConfigKeys.OZONE_PATH_DELETING_LIMIT_PER_TASK, 5);
-    conf.setTimeDuration(OZONE_BLOCK_DELETING_SERVICE_INTERVAL, 500,
+    conf.setTimeDuration(OZONE_BLOCK_DELETING_SERVICE_INTERVAL, 5000,
         TimeUnit.MILLISECONDS);
     conf.setBoolean(OMConfigKeys.OZONE_OM_RATIS_ENABLE_KEY, omRatisEnabled);
     conf.setBoolean(OZONE_ACL_ENABLED, true);
@@ -190,10 +190,22 @@ public class TestSnapshotDeletingService {
 
     verifySnapshotChain(delSnapInfo, null);
 
+    Thread.sleep(1000);
     // verify the cache of purged snapshot
     // /vol1/bucket2/bucket2snap1 has been cleaned up from cache map
     SnapshotCache snapshotCache = om.getOmSnapshotManager().getSnapshotCache();
+    System.out.println("SnapshotCache Entries");
+    for (String key: snapshotCache.getDbMap().keySet()) {
+      System.out.println("Snapshot Key in DB Map: " + key);
+    }
     assertEquals(2, snapshotCache.size());
+    System.out.println("SnapshotCache Eviction List");
+    snapshotCache.getPendingEvictionList().forEach(k -> {
+      OmSnapshot omSnapshot = (OmSnapshot) k.get();
+      System.out.println("Snapshot Key in PendingEvictionList " +
+          omSnapshot.getSnapshotTableKey());
+    });
+
     assertEquals(2, snapshotCache.getPendingEvictionListSize());
   }
 

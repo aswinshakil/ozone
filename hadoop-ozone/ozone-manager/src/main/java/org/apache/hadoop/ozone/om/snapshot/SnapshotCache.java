@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.hadoop.hdds.HddsUtils.formatStackTrace;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.FILE_NOT_FOUND;
 import static org.apache.hadoop.ozone.om.helpers.SnapshotInfo.SnapshotStatus.SNAPSHOT_ACTIVE;
 
@@ -77,13 +78,13 @@ public class SnapshotCache implements ReferenceCountedCallback {
   }
 
   @VisibleForTesting
-  ConcurrentHashMap<String,
+  public ConcurrentHashMap<String,
       ReferenceCounted<IOmMetadataReader, SnapshotCache>> getDbMap() {
     return dbMap;
   }
 
   @VisibleForTesting
-  Set<ReferenceCounted<
+  public Set<ReferenceCounted<
       IOmMetadataReader, SnapshotCache>> getPendingEvictionList() {
     return pendingEvictionList;
   }
@@ -107,6 +108,10 @@ public class SnapshotCache implements ReferenceCountedCallback {
     ReferenceCounted<IOmMetadataReader, SnapshotCache>
         rcOmSnapshot = dbMap.get(key);
     if (rcOmSnapshot != null) {
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "eviction in invalidate func", key);
+      LOG.info(formatStackTrace(Thread.currentThread()
+          .getStackTrace(), 0));
       pendingEvictionList.remove(rcOmSnapshot);
       try {
         ((OmSnapshot) rcOmSnapshot.get()).close();
@@ -131,6 +136,10 @@ public class SnapshotCache implements ReferenceCountedCallback {
           entry = it.next();
       pendingEvictionList.remove(entry.getValue());
       OmSnapshot omSnapshot = (OmSnapshot) entry.getValue().get();
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "eviction in invalidAll func", omSnapshot.getSnapshotTableKey());
+      LOG.info(formatStackTrace(Thread.currentThread()
+          .getStackTrace(), 0));
       try {
         // TODO: If wrapped with SoftReference<>, omSnapshot could be null?
         omSnapshot.close();
@@ -214,6 +223,11 @@ public class SnapshotCache implements ReferenceCountedCallback {
 
     synchronized (pendingEvictionList) {
       // Remove instance from clean up list when it exists.
+      OmSnapshot omSnapshot = (OmSnapshot) rcOmSnapshot.get();
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "eviction in get func", omSnapshot.getSnapshotTableKey());
+      LOG.info(formatStackTrace(Thread.currentThread()
+          .getStackTrace(), 0));
       pendingEvictionList.remove(rcOmSnapshot);
     }
 
@@ -273,8 +287,18 @@ public class SnapshotCache implements ReferenceCountedCallback {
             !pendingEvictionList.contains(referenceCounted),
             "SnapshotCache is inconsistent. Entry should not be in the "
                 + "pendingEvictionList when ref count just reached zero.");
+        OmSnapshot omSnapshot = (OmSnapshot) referenceCounted.get();
+        LOG.info("##TEST## Added Snapshot key {} to " +
+            "eviction in callback func", omSnapshot.getSnapshotTableKey());
+        LOG.info(formatStackTrace(Thread.currentThread()
+            .getStackTrace(), 0));
         pendingEvictionList.add(referenceCounted);
       } else if (referenceCounted.getTotalRefCount() == 1L) {
+        OmSnapshot omSnapshot = (OmSnapshot) referenceCounted.get();
+        LOG.info("##TEST## Remove Snapshot key {} to " +
+            "eviction in callback func", omSnapshot.getSnapshotTableKey());
+        LOG.info(formatStackTrace(Thread.currentThread()
+            .getStackTrace(), 0));
         pendingEvictionList.remove(referenceCounted);
       }
     }
@@ -313,12 +337,18 @@ public class SnapshotCache implements ReferenceCountedCallback {
       final String key = omSnapshot.getSnapshotTableKey();
       final ReferenceCounted<IOmMetadataReader, SnapshotCache> result =
           dbMap.remove(key);
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "dbMap in cleanupInternal func", omSnapshot.getSnapshotTableKey());
       // Sanity check
       Preconditions.checkState(rcOmSnapshot == result,
           "Cache map entry removal failure. The cache is in an inconsistent "
               + "state. Expected OmSnapshot instance: " + rcOmSnapshot
               + ", actual: " + result);
 
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "eviction in cleanupInternal func", omSnapshot.getSnapshotTableKey());
+      LOG.info(formatStackTrace(Thread.currentThread()
+          .getStackTrace(), 0));
       pendingEvictionList.remove(result);
 
       // Close the instance, which also closes its DB handle.
