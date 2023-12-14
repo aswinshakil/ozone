@@ -147,7 +147,6 @@ public class TestSnapshotDeletingService {
   }
 
   @Test
-  @Flaky("HDDS-9288")
   public void testMultipleSnapshotKeyReclaim() throws Exception {
 
     Table<String, RepeatedOmKeyInfo> deletedTable =
@@ -193,12 +192,11 @@ public class TestSnapshotDeletingService {
     // verify the cache of purged snapshot
     // /vol1/bucket2/bucket2snap1 has been cleaned up from cache map
     SnapshotCache snapshotCache = om.getOmSnapshotManager().getSnapshotCache();
-    assertEquals(2, snapshotCache.size());
-    assertEquals(2, snapshotCache.getPendingEvictionListSize());
+    GenericTestUtils.waitFor(() -> snapshotCache.size() == 2, 500, 5000);
+    GenericTestUtils.waitFor(() -> snapshotCache.getPendingEvictionListSize() == 2, 500, 5000);
   }
 
   @SuppressWarnings("checkstyle:MethodLength")
-  @Flaky("HDDS-9023")
   @Test
   public void testSnapshotWithFSO() throws Exception {
     Table<String, OmDirectoryInfo> dirTable =
