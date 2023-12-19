@@ -119,6 +119,8 @@ public class SnapshotCache implements ReferenceCountedCallback {
         throw new IllegalStateException("Failed to close snapshot: " + key, e);
       }
       // Remove the entry from map
+      LOG.info("##TEST## Remove Snapshot key {} to " +
+          "dbMap in invalidate func", key);
       dbMap.remove(key);
     }
   }
