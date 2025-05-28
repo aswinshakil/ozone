@@ -103,7 +103,7 @@ public class MiniOzoneClusterImpl implements MiniOzoneCluster {
   private final List<Service> services;
 
   // Timeout for the cluster to be ready
-  private int waitForClusterToBeReadyTimeout = 120000; // 2 min
+  private int waitForClusterToBeReadyTimeout = 180000; // 3 min
   private CertificateClient caClient;
   private final Set<AutoCloseable> clients = ConcurrentHashMap.newKeySet();
   private SecretKeyClient secretKeyClient;
