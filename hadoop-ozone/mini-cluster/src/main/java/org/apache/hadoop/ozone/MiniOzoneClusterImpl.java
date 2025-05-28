@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -168,6 +169,7 @@ public class MiniOzoneClusterImpl implements MiniOzoneCluster {
       final int healthy = activeScm.getNodeCount(HEALTHY);
       final boolean isNodeReady = healthy == hddsDatanodes.size();
       final boolean exitSafeMode = !activeScm.isInSafeMode();
+      Map<String, String[]> safeModeRuleStatus = activeScm.getSafeModeRuleStatus();
       final boolean checkScmLeader = activeScm.checkLeader();
 
       LOG.info("{}. Got {} of {} DN Heartbeats.",
@@ -175,6 +177,10 @@ public class MiniOzoneClusterImpl implements MiniOzoneCluster {
           healthy, hddsDatanodes.size());
       LOG.info(exitSafeMode ? "Cluster exits safe mode" :
               "Waiting for cluster to exit safe mode");
+      for (Map.Entry<String, String[]> entries : safeModeRuleStatus.entrySet()) {
+        LOG.info("SafeMode Rule: {} - {}", entries.getKey(), String.join(", ", entries.getValue()));
+      }
+
       LOG.info(checkScmLeader ? "SCM became leader" :
           "SCM has not become leader");
 
