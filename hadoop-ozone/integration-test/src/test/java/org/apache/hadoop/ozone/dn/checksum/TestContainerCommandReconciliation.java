@@ -24,6 +24,7 @@ import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_KERBEROS_KEYTAB_FILE_KEY;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_KERBEROS_PRINCIPAL_KEY;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_HEARTBEAT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_EXPIRY_DURATION;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_ROTATE_CHECK_DURATION;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_ROTATE_DURATION;
@@ -34,6 +35,9 @@ import static org.apache.hadoop.hdds.scm.ScmConfig.ConfigStrings.HDDS_SCM_KERBER
 import static org.apache.hadoop.hdds.scm.ScmConfig.ConfigStrings.HDDS_SCM_KERBEROS_PRINCIPAL_KEY;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_KEY;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_CLIENT_ADDRESS_KEY;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DEADNODE_INTERVAL;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_HEARTBEAT_PROCESS_INTERVAL;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_STALENODE_INTERVAL;
 import static org.apache.hadoop.hdds.scm.server.SCMHTTPServerConfig.ConfigStrings.HDDS_SCM_HTTP_KERBEROS_KEYTAB_FILE_KEY;
 import static org.apache.hadoop.hdds.scm.server.SCMHTTPServerConfig.ConfigStrings.HDDS_SCM_HTTP_KERBEROS_PRINCIPAL_KEY;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ADMINISTRATORS;
@@ -142,6 +146,10 @@ public class TestContainerCommandReconciliation {
     conf = new OzoneConfiguration();
     conf.set(OZONE_SCM_CLIENT_ADDRESS_KEY, "localhost");
     conf.set(OZONE_METADATA_DIRS, testDir.getAbsolutePath());
+    conf.set(OZONE_SCM_HEARTBEAT_PROCESS_INTERVAL, "200ms");
+    conf.set(HDDS_HEARTBEAT_INTERVAL, "1s");
+    conf.set(OZONE_SCM_STALENODE_INTERVAL, "3s");
+    conf.set(OZONE_SCM_DEADNODE_INTERVAL, "6s");
     conf.setStorageSize(OZONE_SCM_CHUNK_SIZE_KEY, 128 * 1024, StorageUnit.BYTES);
     conf.setStorageSize(OZONE_SCM_BLOCK_SIZE,  512 * 1024, StorageUnit.BYTES);
 
@@ -368,7 +376,7 @@ public class TestContainerCommandReconciliation {
       db.getStore().flushDB();
     }
 
-    datanodeStateMachine.getContainer().getContainerSet().scanContainer(containerID);
+    datanodeStateMachine.getContainer().getContainerSet().scanContainerWithoutGap(containerID);
     waitForDataChecksumsAtSCM(containerID, 2);
     ContainerProtos.ContainerChecksumInfo containerChecksumAfterBlockDelete =
         readChecksumFile(container.getContainerData());
@@ -445,7 +453,7 @@ public class TestContainerCommandReconciliation {
       db.getStore().flushDB();
     }
 
-    datanodeStateMachine.getContainer().getContainerSet().scanContainer(containerID);
+    datanodeStateMachine.getContainer().getContainerSet().scanContainerWithoutGap(containerID);
     waitForDataChecksumsAtSCM(containerID, 2);
     ContainerProtos.ContainerChecksumInfo containerChecksumAfterChunkCorruption =
         readChecksumFile(container.getContainerData());
@@ -515,7 +523,7 @@ public class TestContainerCommandReconciliation {
       db.getStore().flushDB();
     }
 
-    datanodeStateMachine.getContainer().getContainerSet().scanContainer(containerID);
+    datanodeStateMachine.getContainer().getContainerSet().scanContainerWithoutGap(containerID);
     waitForDataChecksumsAtSCM(containerID, 2);
     ContainerProtos.ContainerChecksumInfo containerChecksumAfterBlockDelete =
         readChecksumFile(container.getContainerData());
@@ -536,9 +544,8 @@ public class TestContainerCommandReconciliation {
     // Restarting all the nodes take more time in mini ozone cluster, so restarting only one node
     cluster.restartHddsDatanode(0, true);
     for (StorageContainerManager scm : cluster.getStorageContainerManagers()) {
-      cluster.restartStorageContainerManager(scm, false);
+      cluster.restartStorageContainerManager(scm, true);
     }
-    cluster.waitForClusterToBeReady();
     waitForDataChecksumsAtSCM(containerID, 1);
     containerReplicas = scmClient.getContainerReplicas(containerID, ClientVersion.CURRENT_VERSION);
     assertEquals(3, containerReplicas.size());
@@ -555,6 +562,7 @@ public class TestContainerCommandReconciliation {
                 ClientVersion.CURRENT_VERSION).stream()
             .map(HddsProtos.SCMContainerReplicaProto::getDataChecksum)
             .collect(Collectors.toSet());
+        System.out.println("dataChecksums.size() = " + dataChecksums.size() + " , expectedSize = " + expectedSize);
         return dataChecksums.size() == expectedSize;
       } catch (Exception ex) {
         return false;
