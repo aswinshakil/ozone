@@ -21,10 +21,12 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_KERBEROS_KEYTAB_FILE_KEY;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_KERBEROS_PRINCIPAL_KEY;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_HEARTBEAT_INTERVAL;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_NODE_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_EXPIRY_DURATION;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_ROTATE_CHECK_DURATION;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SECRET_KEY_ROTATE_DURATION;
@@ -150,6 +152,8 @@ public class TestContainerCommandReconciliation {
     conf.set(HDDS_HEARTBEAT_INTERVAL, "1s");
     conf.set(OZONE_SCM_STALENODE_INTERVAL, "3s");
     conf.set(OZONE_SCM_DEADNODE_INTERVAL, "6s");
+    conf.set(HDDS_NODE_REPORT_INTERVAL, "5s");
+    conf.set(HDDS_CONTAINER_REPORT_INTERVAL, "5s");
     conf.setStorageSize(OZONE_SCM_CHUNK_SIZE_KEY, 128 * 1024, StorageUnit.BYTES);
     conf.setStorageSize(OZONE_SCM_BLOCK_SIZE,  512 * 1024, StorageUnit.BYTES);
 
@@ -544,10 +548,8 @@ public class TestContainerCommandReconciliation {
     // Restarting all the nodes take more time in mini ozone cluster, so restarting only one node
     cluster.restartHddsDatanode(0, true);
     for (StorageContainerManager scm : cluster.getStorageContainerManagers()) {
-      StorageContainerManager newSCM = cluster.restartStorageContainerManager(scm, false);
-      newSCM.exitSafeMode();
+      cluster.restartStorageContainerManager(scm, true);
     }
-    cluster.waitForClusterToBeReady();
     waitForDataChecksumsAtSCM(containerID, 1);
     containerReplicas = scmClient.getContainerReplicas(containerID, ClientVersion.CURRENT_VERSION);
     assertEquals(3, containerReplicas.size());
