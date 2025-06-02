@@ -544,8 +544,10 @@ public class TestContainerCommandReconciliation {
     // Restarting all the nodes take more time in mini ozone cluster, so restarting only one node
     cluster.restartHddsDatanode(0, true);
     for (StorageContainerManager scm : cluster.getStorageContainerManagers()) {
-      cluster.restartStorageContainerManager(scm, true);
+      StorageContainerManager newSCM = cluster.restartStorageContainerManager(scm, false);
+      newSCM.exitSafeMode();
     }
+    cluster.waitForClusterToBeReady();
     waitForDataChecksumsAtSCM(containerID, 1);
     containerReplicas = scmClient.getContainerReplicas(containerID, ClientVersion.CURRENT_VERSION);
     assertEquals(3, containerReplicas.size());
