@@ -236,10 +236,12 @@ public class BlockDeletingService extends BackgroundService {
 
   private boolean isDeletionAllowed(ContainerData containerData,
       ContainerDeletionChoosingPolicy deletionPolicy) {
-    if (!deletionPolicy
-        .isValidContainerType(containerData.getContainerType())) {
+    if (!deletionPolicy.isValidContainerType(containerData.getContainerType())) {
+      LOG.debug("Container with type : {} not allowed", containerData.getContainerType());
       return false;
-    } else if (!containerData.isClosed()) {
+    } else if (!(containerData.isClosed() || containerData.isQuasiClosed())) {
+      LOG.debug("Container with Id : {} State: {} is not closed or quasi closed, skipping block deletion " +
+          "for container.", containerData.getContainerID(), containerData.getState());
       return false;
     } else {
       if (ozoneContainer.getWriteChannel() instanceof XceiverServerRatis) {
@@ -283,7 +285,8 @@ public class BlockDeletingService extends BackgroundService {
           if (!ratisServer.isExist(pipelineID.getProtobuf())) {
             return true;
           } else {
-            LOG.info(ioe.getMessage());
+            LOG.info("Skipping Deletes for container {}: exception msg: {}", containerData.getContainerID(),
+                ioe.getMessage());
             return false;
           }
         }
